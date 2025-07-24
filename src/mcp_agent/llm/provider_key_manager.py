@@ -4,11 +4,12 @@ Centralizes API key handling logic to make provider implementations more generic
 """
 
 import os
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel
 
 from mcp_agent.core.exceptions import ProviderKeyError
+from mcp_agent.llm.dynamic_key_provider import DynamicKeyProvider, DynamicKeyConfig
 
 PROVIDER_ENVIRONMENT_MAP: Dict[str, str] = {
     # default behaviour in _get_env_key_name is to capitalize the
@@ -24,6 +25,8 @@ class ProviderKeyManager:
     This class abstracts away the provider-specific key access logic,
     making the provider implementations more generic.
     """
+    
+    _dynamic_provider: Optional[DynamicKeyProvider] = None
 
     @staticmethod
     def get_env_var(provider_name: str) -> str | None:
@@ -33,6 +36,24 @@ class ProviderKeyManager:
     def get_env_key_name(provider_name: str) -> str:
         return PROVIDER_ENVIRONMENT_MAP.get(provider_name, f"{provider_name.upper()}_API_KEY")
 
+    @classmethod
+    def initialize_dynamic_provider(cls, config: DynamicKeyConfig) -> None:
+        """Initialize the dynamic key provider with configuration."""
+        cls._dynamic_provider = DynamicKeyProvider(config)
+    
+    @classmethod
+    def get_dynamic_key(cls, provider_name: str) -> str | None:
+        """Get API key from dynamic provider if configured."""
+        if cls._dynamic_provider:
+            try:
+                # This will use the sync wrapper - in a real async context,
+                # we'd need to refactor to use async throughout
+                return cls._dynamic_provider.get_api_key_sync(provider_name)
+            except Exception:
+                # Fall back to static methods if dynamic fetch fails
+                return None
+        return None
+    
     @staticmethod
     def get_config_file_key(provider_name: str, config: Any) -> str | None:
         api_key = None
@@ -70,7 +91,14 @@ class ProviderKeyManager:
         if provider_name == "fast-agent":
             return ""
 
-        api_key = ProviderKeyManager.get_config_file_key(provider_name, config)
+        # Try dynamic provider first
+        api_key = ProviderKeyManager.get_dynamic_key(provider_name)
+        
+        # Fall back to config file
+        if not api_key:
+            api_key = ProviderKeyManager.get_config_file_key(provider_name, config)
+        
+        # Fall back to environment variable
         if not api_key:
             api_key = ProviderKeyManager.get_env_var(provider_name)
 

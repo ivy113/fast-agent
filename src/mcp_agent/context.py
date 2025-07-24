@@ -172,6 +172,21 @@ async def initialize_context(
     await configure_otel(config)
     await configure_logger(config)
     await configure_usage_telemetry(config)
+    
+    # Configure dynamic key provider if enabled
+    if config.dynamic_key and config.dynamic_key.enabled and config.dynamic_key.endpoint_url:
+        from mcp_agent.llm.provider_key_manager import ProviderKeyManager
+        from mcp_agent.llm.dynamic_key_provider import DynamicKeyConfig
+        
+        dynamic_config = DynamicKeyConfig(
+            endpoint_url=config.dynamic_key.endpoint_url,
+            cache_duration_seconds=config.dynamic_key.cache_duration_seconds,
+            timeout_seconds=config.dynamic_key.timeout_seconds,
+            headers=config.dynamic_key.headers,
+            auth_token=config.dynamic_key.auth_token
+        )
+        ProviderKeyManager.initialize_dynamic_provider(dynamic_config)
+        logger.info(f"Dynamic key provider initialized with endpoint: {config.dynamic_key.endpoint_url}")
 
     # Configure the executor
     context.executor = await configure_executor(config)

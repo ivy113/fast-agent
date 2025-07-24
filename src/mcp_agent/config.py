@@ -116,6 +116,24 @@ class MCPSettings(BaseModel):
     model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
 
 
+class AnthropicVertexSettings(BaseModel):
+    """Settings for Anthropic Vertex AI integration."""
+    
+    enabled: bool = False
+    """Enable Anthropic Vertex AI instead of standard Anthropic API"""
+    
+    project_id: str | None = None
+    """Google Cloud project ID"""
+    
+    region: str | None = None
+    """Google Cloud region (e.g., us-central1)"""
+    
+    use_dynamic_tokens: bool = False
+    """Use dynamic token fetching for Vertex AI credentials"""
+    
+    model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
+
+
 class AnthropicSettings(BaseModel):
     """
     Settings for using Anthropic models in the fast-agent application.
@@ -132,6 +150,9 @@ class AnthropicSettings(BaseModel):
     - "prompt": Caches tools+system prompt (1 block) and template content. Useful for large, static prompts.
     - "auto": Currently same as "prompt" - caches tools+system prompt (1 block) and template content.
     """
+    
+    vertex_ai: AnthropicVertexSettings | None = None
+    """Vertex AI configuration for Anthropic models"""
 
     model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
 
@@ -273,6 +294,32 @@ class HuggingFaceSettings(BaseModel):
     """
 
     api_key: Optional[str] = None
+    model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
+
+
+class DynamicKeySettings(BaseModel):
+    """
+    Settings for dynamic API key retrieval from external endpoints.
+    """
+    
+    enabled: bool = False
+    """Enable dynamic API key fetching"""
+    
+    endpoint_url: str | None = None
+    """FastAPI endpoint URL to fetch API keys (e.g., https://api.example.com/keys)"""
+    
+    cache_duration_seconds: int = 1800
+    """How long to cache keys (default 30 minutes)"""
+    
+    timeout_seconds: int = 10
+    """Request timeout for fetching keys"""
+    
+    headers: Dict[str, str] | None = None
+    """Additional headers for the request"""
+    
+    auth_token: str | None = None
+    """Authentication token for the endpoint"""
+    
     model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
 
 
@@ -443,6 +490,9 @@ class Settings(BaseSettings):
 
     logger: LoggerSettings | None = LoggerSettings()
     """Logger settings for the fast-agent application"""
+    
+    dynamic_key: DynamicKeySettings | None = DynamicKeySettings()
+    """Settings for dynamic API key retrieval"""
 
     @classmethod
     def find_config(cls) -> Path | None:

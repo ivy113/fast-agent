@@ -21,6 +21,10 @@ if TYPE_CHECKING:
 
 
 from anthropic import AsyncAnthropic, AuthenticationError
+try:
+    from anthropic import AnthropicVertex
+except ImportError:
+    AnthropicVertex = None
 from anthropic.lib.streaming import AsyncMessageStream
 from anthropic.types import (
     Message,
@@ -78,6 +82,60 @@ class AnthropicAugmentedLLM(AugmentedLLM[MessageParam, Message]):
         super().__init__(
             *args, provider=Provider.ANTHROPIC, type_converter=AnthropicSamplingConverter, **kwargs
         )
+
+    def _create_anthropic_client(self, api_key: str, base_url: str = None):
+        """
+        Create the appropriate Anthropic client based on configuration.
+        Uses AnthropicVertex if Vertex AI is configured, otherwise AsyncAnthropic.
+        """
+        # Check if Vertex AI is configured
+        config = self.context.config
+        if (config and 
+            hasattr(config, 'anthropic') and 
+            config.anthropic and 
+            hasattr(config.anthropic, 'vertex_ai') and 
+            config.anthropic.vertex_ai and 
+            config.anthropic.vertex_ai.enabled):
+            
+            vertex_config = config.anthropic.vertex_ai
+            
+            if AnthropicVertex is None:
+                raise ProviderKeyError(
+                    "AnthropicVertex not available",
+                    "Please install the Anthropic library with Vertex AI support: pip install anthropic[vertex]"
+                )
+            
+            # Handle dynamic tokens for Vertex AI
+            if vertex_config.use_dynamic_tokens:
+                # The API key here is actually the Vertex AI token from your dynamic system
+                try:
+                    # Import here to avoid circular imports
+                    from google.auth.credentials import Credentials
+                    
+                    # Create credentials from the dynamic token
+                    credentials = Credentials(token=api_key)
+                    
+                    self.logger.info(f"Creating AnthropicVertex client for project: {vertex_config.project_id}, region: {vertex_config.region}")
+                    return AnthropicVertex(
+                        region=vertex_config.region,
+                        project_id=vertex_config.project_id,
+                        credentials=credentials
+                    )
+                except ImportError:
+                    raise ProviderKeyError(
+                        "Google Cloud credentials not available",
+                        "Please install google-auth: pip install google-auth"
+                    )
+            else:
+                # Use default Vertex AI authentication (service account, etc.)
+                self.logger.info(f"Creating AnthropicVertex client with default auth for project: {vertex_config.project_id}")
+                return AnthropicVertex(
+                    region=vertex_config.region,
+                    project_id=vertex_config.project_id
+                )
+        else:
+            # Use standard Anthropic API
+            return AsyncAnthropic(api_key=api_key, base_url=base_url)
 
     def _initialize_default_params(self, kwargs: dict) -> RequestParams:
         """Initialize Anthropic-specific default parameters"""
@@ -343,7 +401,8 @@ class AnthropicAugmentedLLM(AugmentedLLM[MessageParam, Message]):
             base_url = base_url.rstrip("/v1")
 
         try:
-            anthropic = AsyncAnthropic(api_key=api_key, base_url=base_url)
+            # Check if Vertex AI is configured
+            anthropic = self._create_anthropic_client(api_key, base_url)
             messages: List[MessageParam] = []
             params = self.get_request_params(request_params)
         except AuthenticationError as e:

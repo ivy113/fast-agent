@@ -29,6 +29,7 @@ dependencies = [
     "boto3>=1.35.0",
     "prompt-toolkit>=3.0.50",
     "aiohttp>=3.11.13",
+    "httpx>=0.25.0",
     "opentelemetry-instrumentation-openai>=0.42.0; python_version >= '3.10' and python_version < '4.0'",
     "opentelemetry-instrumentation-anthropic>=0.42.0; python_version >= '3.10' and python_version < '4.0'",
     "opentelemetry-instrumentation-mcp>=0.42.0; python_version >= '3.10' and python_version < '4.0'",
