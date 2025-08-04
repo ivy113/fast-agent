@@ -153,16 +153,33 @@ class DynamicKeyProvider:
     def get_api_key_sync(self, provider_name: str) -> str:
         """
         Synchronous wrapper for fetch_api_key.
-        Creates a new event loop if needed.
+        Uses thread pool to run async code from sync context.
         """
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
-                # If we're already in an async context, we need to handle this differently
-                # This is a complex scenario that might require refactoring
+                # We're in an async context, use thread pool to run the async code
+                import concurrent.futures
+                import threading
+                
+                def run_in_thread():
+                    # Create a new event loop in the thread
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        return new_loop.run_until_complete(self.fetch_api_key(provider_name))
+                    finally:
+                        new_loop.close()
+                
+                # Run in thread pool
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(run_in_thread)
+                    return future.result(timeout=self.config.timeout_seconds + 5)
+        except (RuntimeError, concurrent.futures.TimeoutError) as e:
+            if isinstance(e, concurrent.futures.TimeoutError):
                 raise ProviderKeyError(
-                    "Cannot fetch dynamic key in sync context",
-                    "Dynamic key fetching requires async context"
+                    "Timeout fetching dynamic key",
+                    f"Request timed out after {self.config.timeout_seconds + 5} seconds"
                 )
         except RuntimeError:
             # No event loop exists, create one
