@@ -22,9 +22,10 @@ if TYPE_CHECKING:
 
 from anthropic import AsyncAnthropic, AuthenticationError
 try:
-    from anthropic import AnthropicVertex
+    from anthropic import AnthropicVertex, AsyncAnthropicVertex
 except ImportError:
     AnthropicVertex = None
+    AsyncAnthropicVertex = None
 from anthropic.lib.streaming import AsyncMessageStream
 from anthropic.types import (
     Message,
@@ -99,9 +100,9 @@ class AnthropicAugmentedLLM(AugmentedLLM[MessageParam, Message]):
             
             vertex_config = config.anthropic.vertex_ai
             
-            if AnthropicVertex is None:
+            if AsyncAnthropicVertex is None:
                 raise ProviderKeyError(
-                    "AnthropicVertex not available",
+                    "AsyncAnthropicVertex not available",
                     "Please install the Anthropic library with Vertex AI support: pip install anthropic[vertex]"
                 )
             
@@ -110,13 +111,13 @@ class AnthropicAugmentedLLM(AugmentedLLM[MessageParam, Message]):
                 # The API key here is actually the Vertex AI token from your dynamic system
                 try:
                     # Import here to avoid circular imports
-                    from google.auth.credentials import Credentials
+                    from google.oauth2.credentials import Credentials
                     
                     # Create credentials from the dynamic token
                     credentials = Credentials(token=api_key)
                     
-                    self.logger.info(f"Creating AnthropicVertex client for project: {vertex_config.project_id}, region: {vertex_config.region}")
-                    return AnthropicVertex(
+                    self.logger.info(f"Creating AsyncAnthropicVertex client for project: {vertex_config.project_id}, region: {vertex_config.region}")
+                    return AsyncAnthropicVertex(
                         region=vertex_config.region,
                         project_id=vertex_config.project_id,
                         credentials=credentials
@@ -128,8 +129,8 @@ class AnthropicAugmentedLLM(AugmentedLLM[MessageParam, Message]):
                     )
             else:
                 # Use default Vertex AI authentication (service account, etc.)
-                self.logger.info(f"Creating AnthropicVertex client with default auth for project: {vertex_config.project_id}")
-                return AnthropicVertex(
+                self.logger.info(f"Creating AsyncAnthropicVertex client with default auth for project: {vertex_config.project_id}")
+                return AsyncAnthropicVertex(
                     region=vertex_config.region,
                     project_id=vertex_config.project_id
                 )
