@@ -106,6 +106,7 @@ class ConsoleDisplay:
             check_markdown_markers: If True, only use markdown rendering when markers are present
         """
         import re
+
         from rich.markdown import Markdown
         
         # Check if content appears to be primarily XML
