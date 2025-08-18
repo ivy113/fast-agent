@@ -438,7 +438,6 @@ class ConsoleDisplay:
         model: str | None = None,
     ) -> None:
         """Display an assistant message in a formatted panel."""
-        from rich.markdown import Markdown
 
         if not self.config or not self.config.logger.show_chat:
             return
@@ -571,7 +570,6 @@ class ConsoleDisplay:
         self, message, model: str | None = None, chat_turn: int = 0, name: str | None = None
     ) -> None:
         """Display a user message in the new visual style."""
-        from rich.markdown import Markdown
 
         if not self.config or not self.config.logger.show_chat:
             return
@@ -682,7 +680,7 @@ class ConsoleDisplay:
         Args:
             parallel_agent: The parallel agent containing fan_out_agents with results
         """
-        from rich.markdown import Markdown
+        
         from rich.text import Text
 
         if self.config and not self.config.logger.show_chat:
