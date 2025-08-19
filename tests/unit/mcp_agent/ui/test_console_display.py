@@ -1,6 +1,6 @@
 """Unit tests for console_display module, specifically _prepare_markdown_content."""
 
-from src.mcp_agent.ui.console_display import _prepare_markdown_content
+from mcp_agent.ui.console_display import _prepare_markdown_content
 
 
 class TestPrepareMarkdownContent:
