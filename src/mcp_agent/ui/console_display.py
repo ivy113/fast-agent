@@ -19,43 +19,42 @@ from mcp_agent.mcp.mcp_aggregator import MCPAggregator
 HUMAN_INPUT_TOOL_NAME = "__human_input__"
 CODE_STYLE = "native"
 
-HTML_ESCAPE_CHARS = {
-    '&': '&amp;', 
-    '<': '&lt;',
-    '>': '&gt;', 
-    '"': '&quot;',
-    "'": '&#39;'
-}
+HTML_ESCAPE_CHARS = {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}
+
 
 def _prepare_markdown_content(content: str, escape_xml: bool = True) -> str:
-    """Prepare content for markdown rendering by escaping HTML/XML tags 
+    """Prepare content for markdown rendering by escaping HTML/XML tags
     while preserving code blocks and inline code.
-    
+
     This ensures XML/HTML tags are displayed as visible text rather than
     being interpreted as markup by the markdown renderer.
+
+    Note: This method does not handle overlapping code blocks (e.g., if inline
+    code appears within a fenced code block range). In practice, this is not
+    an issue since markdown syntax doesn't support such overlapping.
     """
     if not escape_xml or not isinstance(content, str):
         return content
-        
+
     protected_ranges = []
     import re
 
     # Protect fenced code blocks (don't escape anything inside these)
-    code_block_pattern = r'```[\s\S]*?```'
+    code_block_pattern = r"```[\s\S]*?```"
     for match in re.finditer(code_block_pattern, content):
         protected_ranges.append((match.start(), match.end()))
 
     # Protect inline code (don't escape anything inside these)
-    inline_code_pattern = r'(?<!`)`(?!``)[^`\n]+`(?!`)'
+    inline_code_pattern = r"(?<!`)`(?!``)[^`\n]+`(?!`)"
     for match in re.finditer(inline_code_pattern, content):
         protected_ranges.append((match.start(), match.end()))
 
     protected_ranges.sort(key=lambda x: x[0])
-    
+
     # Build the escaped content
     result = []
     last_end = 0
-    
+
     for start, end in protected_ranges:
         # Escape everything outside protected ranges
         unprotected_text = content[last_end:start]
@@ -66,14 +65,14 @@ def _prepare_markdown_content(content: str, escape_xml: bool = True) -> str:
         # Keep protected ranges (code blocks) as-is
         result.append(content[start:end])
         last_end = end
-    
+
     # Escape any remaining content after the last protected range
     remainder_text = content[last_end:]
     for char, replacement in HTML_ESCAPE_CHARS.items():
         remainder_text = remainder_text.replace(char, replacement)
     result.append(remainder_text)
-    
-    return ''.join(result)
+
+    return "".join(result)
 
 
 class ConsoleDisplay:
@@ -92,15 +91,15 @@ class ConsoleDisplay:
         self.config = config
         self._markup = config.logger.enable_markup if config else True
         self._escape_xml = True
-    
+
     def _render_content_smartly(self, content: str, check_markdown_markers: bool = False) -> None:
         """
         Helper method to intelligently render content based on its type.
-        
+
         - Pure XML: Use syntax highlighting for readability
         - Markdown (with markers): Use markdown rendering with proper escaping
         - Plain text: Display as-is (when check_markdown_markers=True and no markers found)
-        
+
         Args:
             content: The text content to render
             check_markdown_markers: If True, only use markdown rendering when markers are present
@@ -108,14 +107,15 @@ class ConsoleDisplay:
         import re
 
         from rich.markdown import Markdown
-        
+
         # Check if content appears to be primarily XML
-        xml_pattern = r'^<[a-zA-Z_][a-zA-Z0-9_-]*[^>]*>'
-        is_xml_content = bool(re.match(xml_pattern, content.strip())) and content.count('<') > 5
-        
+        xml_pattern = r"^<[a-zA-Z_][a-zA-Z0-9_-]*[^>]*>"
+        is_xml_content = bool(re.match(xml_pattern, content.strip())) and content.count("<") > 5
+
         if is_xml_content:
             # Display XML content with syntax highlighting for better readability
             from rich.syntax import Syntax
+
             syntax = Syntax(content, "xml", theme=CODE_STYLE, line_numbers=False)
             console.console.print(syntax, markup=self._markup)
         elif check_markdown_markers:
@@ -681,7 +681,7 @@ class ConsoleDisplay:
         Args:
             parallel_agent: The parallel agent containing fan_out_agents with results
         """
-        
+
         from rich.text import Text
 
         if self.config and not self.config.logger.show_chat:
